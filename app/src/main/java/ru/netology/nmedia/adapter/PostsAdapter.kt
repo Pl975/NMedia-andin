@@ -1,5 +1,7 @@
 package ru.netology.nmedia.adapter
 
+import android.annotation.SuppressLint
+import android.icu.text.SimpleDateFormat
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import android.widget.PopupMenu
@@ -9,6 +11,8 @@ import androidx.recyclerview.widget.RecyclerView
 import ru.netology.nmedia.R
 import ru.netology.nmedia.databinding.CardPostBinding
 import ru.netology.nmedia.dto.Post
+import java.util.Date
+import java.util.Locale
 
 interface OnInteractionListener {
     fun onLike(post: Post) {}
@@ -36,10 +40,13 @@ class PostViewHolder(
     private val onInteractionListener: OnInteractionListener,
 ) : RecyclerView.ViewHolder(binding.root) {
 
+    @SuppressLint("NewApi")
     fun bind(post: Post) {
         binding.apply {
             author.text = post.author
-            published.text = post.published
+//            published.text = post.published
+            val dateFormat = SimpleDateFormat("dd MMM yyyy HH:mm:ss", Locale.ENGLISH)
+            published.text = dateFormat.format(Date(post.published.toLong()*1000))
             content.text = post.content
             // в адаптере
             like.isChecked = post.likedByMe
