@@ -37,6 +37,7 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
         thread {
             // Начинаем загрузку
             _data.postValue(FeedModel(loading = true))
+
             try {
                 // Данные успешно получены
                 val posts = repository.getAll()
@@ -44,7 +45,7 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
             } catch (e: IOException) {
                 // Получена ошибка
                 FeedModel(error = true)
-            }.also(_data::postValue)
+            }.let(_data::postValue)
         }
     }
 
@@ -53,9 +54,9 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
             thread {
                 repository.save(it)
                 _postCreated.postValue(Unit)
+                edited.postValue(empty)
             }
         }
-        edited.value = empty
     }
 
     fun edit(post: Post) {
@@ -71,23 +72,42 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun likeById(id: Long) {
-        thread { repository.likeById(id) }
+//        thread { repository.likeById(id) }
+        val currentState = _data.value ?: return
+        thread {
+            _data.postValue(
+                currentState.copy(posts = _data.value?.posts.orEmpty().map {
+                val delta = if (it.likedByMe) -1 else 1
+                if (it.id != id) it else it.copy(
+                    likedByMe = !it.likedByMe,
+                    likes = it.likes + delta
+                )
+            }))
+            try {
+                repository.likeById(id)
+            } catch (e: IOException) {
+                _data.postValue(currentState)
+            }
+        }
     }
 
     fun removeById(id: Long) {
+        val currentState = _data.value ?: return
         thread {
             // Оптимистичная модель
-            val old = _data.value?.posts.orEmpty()
+
             _data.postValue(
-                _data.value?.copy(posts = _data.value?.posts.orEmpty()
-                    .filter { it.id != id }
+                currentState.copy(
+                    posts = currentState.posts.filter { it.id != id }
                 )
             )
             try {
                 repository.removeById(id)
             } catch (e: IOException) {
-                _data.postValue(_data.value?.copy(posts = old))
+                _data.postValue(currentState)
             }
         }
     }
 }
+
+
