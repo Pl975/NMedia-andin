@@ -7,6 +7,7 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
+import com.bumptech.glide.request.RequestOptions
 import ru.netology.nmedia.R
 import ru.netology.nmedia.databinding.CardPostBinding
 import ru.netology.nmedia.dto.Post
@@ -56,11 +57,13 @@ class PostViewHolder(
             like.text = "${post.likes}"
 
             val url = BASE_URL + AVATARS + "/${post.authorAvatar}"
+            val options: RequestOptions = RequestOptions.circleCropTransform()
             Glide.with(avatar)
                 .load(url)
                 .placeholder(R.drawable.ic_loading_100dp)
                 .error(R.drawable.ic_error_100dp)
                 .timeout(10_000)
+                .apply(options)
                 .into(avatar)
 
             menu.setOnClickListener {
@@ -72,6 +75,7 @@ class PostViewHolder(
                                 onInteractionListener.onRemove(post)
                                 true
                             }
+
                             R.id.edit -> {
                                 onInteractionListener.onEdit(post)
                                 true
