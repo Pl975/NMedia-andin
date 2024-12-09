@@ -14,6 +14,7 @@ private val empty = Post(
     id = 0,
     content = "",
     author = "",
+    authorAvatar = "",
     likedByMe = false,
     likes = 0,
     published = ""
@@ -62,6 +63,30 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
         }
         edited.value = empty
     }
+
+// улучшенный вариант реализации
+//    fun save() {
+//        edited.value?.let { editedPost ->
+//            repository.save(editedPost, object : PostRepository.PostCallback<Post> {
+//                override fun onSuccess(result: Post) {
+//                    val old = data.value?.posts.orEmpty()
+//                    _data.postValue(data.value?.copy(posts =
+//                    if (old.map { it.id }.contains(result.id)) {
+//                        old.map { if (it.id == result.id) result else it }
+//                    } else {
+//                        listOf(result) + old
+//                    }))
+//                    _postCreated.postValue(Unit)
+//                }
+//
+//                override fun onError(error: Throwable) {
+//                    _postCreated.postValue(Unit)
+//                }
+//            })
+//        }
+//        edited.value = empty
+//    }
+
 
     fun edit(post: Post) {
         edited.value = post

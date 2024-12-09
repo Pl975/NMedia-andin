@@ -6,6 +6,7 @@ import android.widget.PopupMenu
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import com.bumptech.glide.Glide
 import ru.netology.nmedia.R
 import ru.netology.nmedia.databinding.CardPostBinding
 import ru.netology.nmedia.dto.Post
@@ -39,15 +40,28 @@ class PostViewHolder(
     private val onInteractionListener: OnInteractionListener,
 ) : RecyclerView.ViewHolder(binding.root) {
 
+    companion object {
+        private const val BASE_URL = "http://10.0.2.2:9999"
+        private const val AVATARS = "/avatars"
+    }
+
     fun bind(post: Post) {
         binding.apply {
             author.text = post.author
             val dateFormat = SimpleDateFormat("dd MMM yyyy HH:mm:ss", Locale.ENGLISH)
-            published.text = dateFormat.format(Date(post.published.toLong()*1000))
+            published.text = dateFormat.format(Date(post.published.toLong() * 1000))
             content.text = post.content
             // в адаптере
             like.isChecked = post.likedByMe
             like.text = "${post.likes}"
+
+            val url = BASE_URL + AVATARS + "/${post.authorAvatar}"
+            Glide.with(avatar)
+                .load(url)
+                .placeholder(R.drawable.ic_loading_100dp)
+                .error(R.drawable.ic_error_100dp)
+                .timeout(10_000)
+                .into(avatar)
 
             menu.setOnClickListener {
                 PopupMenu(it.context, it).apply {
