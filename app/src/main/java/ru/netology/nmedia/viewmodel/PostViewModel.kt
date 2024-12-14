@@ -10,6 +10,7 @@ import ru.netology.nmedia.repository.PostRepository
 import ru.netology.nmedia.repository.PostRepositoryImpl
 import ru.netology.nmedia.util.SingleLiveEvent
 
+
 private val empty = Post(
     id = 0,
     content = "",
@@ -26,8 +27,8 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
     val data: LiveData<FeedModel>
         get() = _data
     val edited = MutableLiveData(empty)
-    private val _postCreated = SingleLiveEvent<Unit>()
-    val postCreated: LiveData<Unit>
+    private val _postCreated = SingleLiveEvent<FeedModel>()
+    val postCreated: LiveData<FeedModel>
         get() = _postCreated
 
     init {
@@ -36,12 +37,12 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
 
     fun loadPosts() {
         _data.value = FeedModel(loading = true)
-        repository.getAllAsync(object : PostRepository.PostCallback<List<Post>> {
+        repository.getAllAsync(object : PostRepository.Callback<List<Post>> {
             override fun onSuccess(result: List<Post>) {
                 _data.postValue(FeedModel(posts = result, empty = result.isEmpty()))
             }
 
-            override fun onError(error: Throwable) {
+            override fun onError(e: Exception) {
                 _data.postValue(FeedModel(error = true))
             }
         })
@@ -50,18 +51,19 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
 
     fun save() {
         edited.value?.let {
-            repository.save(it, object : PostRepository.PostCallback<Unit> {
+            repository.saveAsync(it, object : PostRepository.Callback<Unit> {
                 override fun onSuccess(result: Unit) {
-                    _postCreated.postValue(result)
+                    _postCreated.postValue(FeedModel())
                 }
 
-                override fun onError(error: Throwable) {
-                    _postCreated.postValue(Unit)
+                override fun onError(e: Exception) {
+                    _postCreated.postValue(FeedModel(error = true))
                 }
             })
         }
         edited.value = empty
     }
+
 
     fun edit(post: Post) {
         edited.value = post
@@ -76,8 +78,7 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun likeById(id: Long) {
-        val old = _data.value?.posts.orEmpty()
-        repository.likeById(id, object : PostRepository.PostCallback<Unit> {
+        repository.likeByIdAsync(id, object : PostRepository.Callback<Unit> {
             override fun onSuccess(result: Unit) {
                 _data.postValue(_data.value?.copy(posts = _data.value?.posts.orEmpty().map {
                     val delta = if (it.likedByMe) -1 else 1
@@ -88,16 +89,15 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
                 }))
             }
 
-            override fun onError(error: Throwable) {
-                _data.postValue(_data.value?.copy(posts = old))
+            override fun onError(e: Exception) {
+                _data.postValue(FeedModel(error = true))
             }
         })
     }
 
-
     fun removeById(id: Long) {
-        val old = _data.value?.posts.orEmpty()
-        repository.removeById(id, object : PostRepository.PostCallback<Unit> {
+        // Оптимистичная модель
+        repository.removeByIdAsync(id, object : PostRepository.Callback<Unit> {
             override fun onSuccess(result: Unit) {
                 _data.postValue(
                     _data.value?.copy(posts = _data.value?.posts.orEmpty()
@@ -106,8 +106,8 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
                 )
             }
 
-            override fun onError(error: Throwable) {
-                _data.postValue(_data.value?.copy(posts = old))
+            override fun onError(e: Exception) {
+                _data.postValue(FeedModel(error = true))
             }
         })
     }
