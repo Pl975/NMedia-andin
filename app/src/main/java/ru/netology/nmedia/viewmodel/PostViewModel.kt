@@ -37,12 +37,16 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
 
     fun loadPosts() {
         _data.value = FeedModel(loading = true)
+
         repository.getAllAsync(object : PostRepository.Callback<List<Post>> {
+
             override fun onSuccess(result: List<Post>) {
                 _data.postValue(FeedModel(posts = result, empty = result.isEmpty()))
             }
 
+
             override fun onError(e: Exception) {
+
                 _data.postValue(FeedModel(error = true))
             }
         })
@@ -58,6 +62,7 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
 
                 override fun onError(e: Exception) {
                     _postCreated.postValue(FeedModel(error = true))
+
                 }
             })
         }
@@ -78,7 +83,9 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun likeById(id: Long) {
+
         repository.likeByIdAsync(id, object : PostRepository.Callback<Unit> {
+
             override fun onSuccess(result: Unit) {
                 _data.postValue(_data.value?.copy(posts = _data.value?.posts.orEmpty().map {
                     val delta = if (it.likedByMe) -1 else 1
@@ -87,28 +94,35 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
                         likes = it.likes + delta
                     )
                 }))
+
             }
 
             override fun onError(e: Exception) {
                 _data.postValue(FeedModel(error = true))
             }
+
         })
     }
 
+
     fun removeById(id: Long) {
+
         // Оптимистичная модель
         repository.removeByIdAsync(id, object : PostRepository.Callback<Unit> {
+
             override fun onSuccess(result: Unit) {
                 _data.postValue(
                     _data.value?.copy(posts = _data.value?.posts.orEmpty()
                         .filter { it.id != id }
                     )
                 )
+
             }
 
             override fun onError(e: Exception) {
                 _data.postValue(FeedModel(error = true))
             }
+
         })
     }
 }
