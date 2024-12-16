@@ -1,188 +1,119 @@
 package ru.netology.nmedia.repository
 
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody
-import okhttp3.RequestBody.Companion.toRequestBody
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.map
 import ru.netology.nmedia.api.PostsApi
+import ru.netology.nmedia.dao.PostDao
 import ru.netology.nmedia.dto.Post
-import java.util.concurrent.TimeUnit
+import ru.netology.nmedia.entity.PostEntity
+import ru.netology.nmedia.entity.toDto
+import ru.netology.nmedia.entity.toEntity
+import ru.netology.nmedia.error.ApiError
+import ru.netology.nmedia.error.NetworkError
+import ru.netology.nmedia.error.UnknownError
+import java.io.IOException
 
 
-class PostRepositoryImpl : PostRepository {
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .build()
-    private val gson = Gson()
-    private val typeToken = object : TypeToken<List<Post>>() {}
-    private val postTypeToken = object : TypeToken<Post>() {}
+class PostRepositoryImpl(private val dao: PostDao) : PostRepository {
 
-    companion object {
-        private const val BASE_URL = "http://10.0.2.2:9999"
-        private val jsonType = "application/json".toMediaType()
+    override val data: LiveData<List<Post>> = dao.getAll().map { it.toDto() }
+    private var retryFun: RetryInterface? = null
+    private fun clearRetryFun() {
+        retryFun = null
     }
 
-    override fun getAll(): List<Post> {
-        val request: Request = Request.Builder()
-            .url("${BASE_URL}/api/slow/posts")
-            .build()
 
-        return client.newCall(request)
-            .execute()
-            .let { it.body?.string() ?: throw RuntimeException("body is null") }
-            .let {
-                gson.fromJson(it, typeToken.type)
+    override suspend fun getAll() {
+        try {
+            val response = PostsApi.retrofitService.getAll()
+            if (!response.isSuccessful) {
+                throw ApiError(response.code(), response.message())
             }
-    }
-
-    override fun getAllAsync(callback: PostRepository.Callback<List<Post>>) {
-        PostsApi.retrofitService.getAll().enqueue(object : Callback<List<Post>> {
-            override fun onResponse(call: Call<List<Post>>, response: Response<List<Post>>) {
-                if (!response.isSuccessful) {
-                    callback.onError(java.lang.RuntimeException(response.message()))
-                    return
-                }
-                callback.onSuccess(
-                    response.body() ?: throw java.lang.RuntimeException("body is null")
-                )
-            }
-
-            override fun onFailure(call: Call<List<Post>>, t: Throwable) {
-                callback.onError(RuntimeException(t))
-            }
-        })
-    }
-
-    override fun likeById(id: Long) {
-        val getThePostRequest = Request.Builder()
-            .url("${BASE_URL}/api/posts/${id}")
-            .build()
-        val post = client.newCall(getThePostRequest)
-            .execute()
-            .let { it.body?.string() ?: throw RuntimeException("body is null") }
-            .let { gson.fromJson(it, Post::class.java) }
-
-        val request: Request = Request.Builder()
-            .postOrDelete(post.likedByMe, gson.toJson(id).toRequestBody(jsonType))
-            .url("${BASE_URL}/api/posts/${id}/likes")
-            .build()
-
-        client.newCall(request)
-            .execute()
-            .close()
-    }
-
-    override fun likeByIdAsync(id: Long, callback: PostRepository.Callback<Unit>) {
-        getPostByIdAsync(id, object : PostRepository.Callback<Post> {
-            override fun onSuccess(result: Post) {
-                val call = if (result.likedByMe) {
-                    PostsApi.retrofitService.dislikeById(id)
-                } else {
-                    PostsApi.retrofitService.likeById(id)
-                }
-                call.enqueue(getResponseUnitCallback(callback))
-            }
-
-            override fun onError(e: Exception) {
-                callback.onError(e)
-            }
-        })
-
-
-    }
-
-    private fun getPostByIdAsync(id: Long, callback: PostRepository.Callback<Post>) {
-        PostsApi.retrofitService.getById(id).enqueue(object : Callback<Post> {
-            override fun onResponse(call: Call<Post>, response: Response<Post>) {
-                if (!response.isSuccessful) {
-                    callback.onError(java.lang.RuntimeException(response.message()))
-                    return
-                }
-                callback.onSuccess(
-                    response.body() ?: throw java.lang.RuntimeException("body is null")
-                )
-            }
-
-            override fun onFailure(call: Call<Post>, t: Throwable) {
-                callback.onError(RuntimeException(t))
-            }
-        })
-    }
-
-    private fun getResponseUnitCallback(callback: PostRepository.Callback<Unit>): Callback<Unit> {
-        return object : Callback<Unit> {
-            override fun onFailure(call: Call<Unit>, t: Throwable) {
-                callback.onError(RuntimeException(t))
-            }
-
-            override fun onResponse(call: Call<Unit>, response: Response<Unit>) {
-                if (!response.isSuccessful) {
-                    callback.onError(java.lang.RuntimeException(response.message()))
-                    return
-                }
-                callback.onSuccess(Unit)
-            }
+            val posts = response.body() ?: throw ApiError(response.code(), response.message())
+            dao.insert(posts.toEntity())
+        } catch (e: ApiError) {
+            throw e
+        } catch (_: IOException) {
+            throw NetworkError
+        } catch (_: Exception) {
+            throw UnknownError
         }
     }
 
-    private fun Request.Builder.postOrDelete(likedByMe: Boolean, rb: RequestBody): Request.Builder {
-        if (likedByMe) {
-            delete(rb)
-        } else {
-            post(rb)
+    override suspend fun save(post: Post) {
+        try {
+            val response = PostsApi.retrofitService.save(post)
+            if (!response.isSuccessful) {
+                throw ApiError(response.code(), response.message())
+            }
+            val body = response.body() ?: throw ApiError(response.code(), response.message())
+            dao.insert(PostEntity.fromDto(body))
+        } catch (e: ApiError) {
+            throw e
+        } catch (_: IOException) {
+            throw NetworkError
+        } catch (_: Exception) {
+            throw UnknownError
         }
-        return this
     }
 
-    override fun save(post: Post) {
-        val request: Request = Request.Builder()
-            .post(gson.toJson(post).toRequestBody(jsonType))
-            .url("${BASE_URL}/api/slow/posts")
-            .build()
-
-        client.newCall(request)
-            .execute()
-            .close()
+    override suspend fun likeById(id: Long) {
+        dao.likeById(id)
+        likeByIdOnServer(id)
     }
 
-    override fun saveAsync(post: Post, callback: PostRepository.Callback<Unit>) {
-
-        PostsApi.retrofitService.save(post).enqueue(getResponseUnitCallback(callback))
-    }
-
-    override fun removeById(id: Long) {
-        val request: Request = Request.Builder()
-            .delete()
-            .url("${BASE_URL}/api/slow/posts/${id}")
-            .build()
-
-        client.newCall(request)
-            .execute()
-            .close()
-    }
-
-    override fun removeByIdAsync(id: Long, callback: PostRepository.Callback<Unit>) {
-        PostsApi.retrofitService.removeById(id).enqueue(object : Callback<Unit> {
-            override fun onResponse(call: Call<Unit>, response: Response<Unit>) {
-                if (!response.isSuccessful) {
-                    callback.onError(java.lang.RuntimeException(response.message()))
-                    return
-                }
-                callback.onSuccess(
-                    response.body() ?: throw java.lang.RuntimeException("body is null")
-                )
+    private suspend fun likeByIdOnServer(id: Long) {
+        try {
+            val getThePostResponse = PostsApi.retrofitService.getById(id)
+            if (!getThePostResponse.isSuccessful) {
+                throw ApiError(getThePostResponse.code(), getThePostResponse.message())
+            }
+            val body = getThePostResponse.body() ?: throw ApiError(
+                getThePostResponse.code(),
+                getThePostResponse.message()
+            )
+            val likeResponse =
+                if (body.likedByMe) PostsApi.retrofitService.dislikeById(id)
+                else PostsApi.retrofitService.likeById(id)
+            if (!likeResponse.isSuccessful) {
+                throw ApiError(likeResponse.code(), likeResponse.message())
             }
 
-            override fun onFailure(call: Call<Unit>, t: Throwable) {
-                callback.onError(RuntimeException(t))
-            }
-        })
+            clearRetryFun()
+        } catch (e: ApiError) {
+            throw e
+        } catch (_: IOException) {
+            throw NetworkError
+        } catch (_: Exception) {
+            throw UnknownError
+        }
     }
+
+    override suspend fun removeById(id: Long) {
+        dao.removeById(id)
+        removeByIdOnServer(id)
+    }
+
+    private suspend fun removeByIdOnServer(id: Long) {
+        try {
+            val response = PostsApi.retrofitService.removeById(id)
+            if (!response.isSuccessful) {
+                throw ApiError(response.code(), response.message())
+            }
+            val body = response.body() ?: throw ApiError(response.code(), response.message())
+            clearRetryFun()
+        } catch (e: ApiError) {
+            throw e
+        } catch (_: IOException) {
+            throw NetworkError
+        } catch (_: Exception) {
+            throw UnknownError
+
+        }
+    }
+}
+
+fun interface RetryInterface {
+    suspend fun retry()
 }
 

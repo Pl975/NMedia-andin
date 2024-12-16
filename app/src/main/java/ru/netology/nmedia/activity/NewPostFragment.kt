@@ -41,14 +41,14 @@ class NewPostFragment : Fragment() {
             viewModel.save()
             AndroidUtils.hideKeyboard(requireView())
         }
-        viewModel.postCreated.observe(viewLifecycleOwner) {
-            if (it.error) {
-                Toast.makeText(requireContext(), "Пост не сохранен. Проверьте параметры и попробуйте снова", Toast.LENGTH_SHORT).show()
-            } else {
-                viewModel.loadPosts()
-                findNavController().navigateUp()
-            }
-        }
+//        viewModel.postCreated.observe(viewLifecycleOwner) {
+//            if (it.error) {
+//                Toast.makeText(requireContext(), "Пост не сохранен. Проверьте параметры и попробуйте снова", Toast.LENGTH_SHORT).show()
+//            } else {
+//                viewModel.loadPosts()
+//                findNavController().navigateUp()
+//            }
+//        }
         return binding.root
     }
 }

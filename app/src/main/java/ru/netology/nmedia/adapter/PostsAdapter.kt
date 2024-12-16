@@ -6,9 +6,11 @@ import android.widget.PopupMenu
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import ru.netology.nmedia.BuildConfig
 import ru.netology.nmedia.R
 import ru.netology.nmedia.databinding.CardPostBinding
 import ru.netology.nmedia.dto.Post
+import ru.netology.nmedia.view.loadCircleCrop
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -43,9 +45,9 @@ class PostViewHolder(
         binding.apply {
             author.text = post.author
             val dateFormat = SimpleDateFormat("dd MMM yyyy HH:mm:ss", Locale.ENGLISH)
-            published.text = dateFormat.format(Date(post.published.toLong()*1000))
+            published.text = dateFormat.format(Date(post.published.toLong() * 1000))
             content.text = post.content
-            // в адаптере
+            avatar.loadCircleCrop("${BuildConfig.BASE_URL}/avatars/${post.authorAvatar}")
             like.isChecked = post.likedByMe
             like.text = "${post.likes}"
 
@@ -58,6 +60,7 @@ class PostViewHolder(
                                 onInteractionListener.onRemove(post)
                                 true
                             }
+
                             R.id.edit -> {
                                 onInteractionListener.onEdit(post)
                                 true
