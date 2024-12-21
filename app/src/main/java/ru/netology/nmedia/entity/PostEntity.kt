@@ -24,3 +24,6 @@ data class PostEntity(
     }
 }
 
+fun List<Post>.toEntity() = map { PostEntity.fromDto(it) }
+fun List<PostEntity>.toDto() = map { it.toDto() }
+
