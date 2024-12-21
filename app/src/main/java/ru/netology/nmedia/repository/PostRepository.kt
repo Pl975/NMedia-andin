@@ -5,6 +5,7 @@ import ru.netology.nmedia.dto.Post
 
 
 interface PostRepository {
+
     val data: LiveData<List<Post>>
 
     suspend fun getAll()

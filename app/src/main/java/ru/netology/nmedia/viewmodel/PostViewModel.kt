@@ -52,6 +52,7 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
 
     //Загрузка постов
     fun loadPosts() {
+
         viewModelScope.launch {
             try {
                 _dataState.value = FeedModelState(loading = true)
@@ -63,16 +64,19 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
                     is NetworkError -> _dataState.value = FeedModelState(error = FeedError.NETWORK)
                     is UnknownError -> _dataState.value = FeedModelState(error = FeedError.UNKNOWN)
                 }
+
             }
         }
     }
 
     fun save() {
         edited.value?.let {
+
             viewModelScope.launch {
                 repository.save(it)
                 _postCreated.value = Unit
             }
+
         }
         edited.value = empty
     }
@@ -90,6 +94,7 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
         edited.value = edited.value?.copy(content = text)
     }
 
+
     fun likeById(id: Long) = viewModelScope.launch {
         try {
             repository.likeById(id)
@@ -104,6 +109,7 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
     }
 
 
+
     fun removeById(id: Long) = viewModelScope.launch {
         try {
             repository.removeById(id)
@@ -114,7 +120,7 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
                 is NetworkError -> _dataState.value = FeedModelState(error = FeedError.NETWORK)
                 is UnknownError -> _dataState.value = FeedModelState(error = FeedError.UNKNOWN)
             }
-        }
+
     }
 
 }

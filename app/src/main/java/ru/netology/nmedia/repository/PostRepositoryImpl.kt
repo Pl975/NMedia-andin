@@ -19,7 +19,6 @@ class PostRepositoryImpl(private val dao: PostDao) : PostRepository {
 
     override val data: LiveData<List<Post>> = dao.getAll().map { it.toDto() }
 
-
     override suspend fun getAll() {
         try {
             val response = PostsApi.retrofitService.getAll()
@@ -37,11 +36,13 @@ class PostRepositoryImpl(private val dao: PostDao) : PostRepository {
         }
     }
 
+
     override suspend fun save(post: Post) {
         try {
             val response = PostsApi.retrofitService.save(post)
             if (!response.isSuccessful) {
                 throw ApiError(response.code(), response.message())
+
             }
             val body = response.body() ?: throw ApiError(response.code(), response.message())
             dao.insert(PostEntity.fromDto(body))
@@ -104,6 +105,5 @@ class PostRepositoryImpl(private val dao: PostDao) : PostRepository {
         }
     }
 }
-
 
 
