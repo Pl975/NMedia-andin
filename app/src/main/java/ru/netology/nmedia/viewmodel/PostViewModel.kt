@@ -4,8 +4,11 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.map
+import androidx.lifecycle.asLiveData
+import androidx.lifecycle.switchMap
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import ru.netology.nmedia.db.AppDb
 import ru.netology.nmedia.dto.Post
@@ -31,11 +34,18 @@ private val empty = Post(
 )
 
 class PostViewModel(application: Application) : AndroidViewModel(application) {
-    // упрощённый вариант
+
     private val repository: PostRepository =
         PostRepositoryImpl(AppDb.getInstance(application).postDao())
 
-    val data = repository.data.map { FeedModel(posts = it, empty = it.isEmpty()) }
+    val data: LiveData<FeedModel> = repository.data
+        .map(::FeedModel)
+        .asLiveData(Dispatchers.Default)
+
+    val newerCount: LiveData<Int> = data.switchMap {
+        val newerPostId = it.posts.firstOrNull()?.id ?: 0L
+        repository.getNewerCount(newerPostId).asLiveData(Dispatchers.Default)
+    }
 
     private val _dataState = MutableLiveData(FeedModelState())
     val dataState: LiveData<FeedModelState>
@@ -109,7 +119,6 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
     }
 
 
-
     fun removeById(id: Long) = viewModelScope.launch {
         try {
             repository.removeById(id)
@@ -121,7 +130,12 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
                 is UnknownError -> _dataState.value = FeedModelState(error = FeedError.UNKNOWN)
             }
 
+        }
+
     }
 
+    fun showNewPosts() {
+        repository.showNewPosts()
+    }
 }
 

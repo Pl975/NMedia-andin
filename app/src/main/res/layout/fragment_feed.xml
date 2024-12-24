@@ -9,6 +9,22 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
+        <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+            android:id="@+id/newer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/fab_margin"
+            android:backgroundTint="@color/colorPrimary"
+            android:text="@string/show_newer_posts"
+            android:textAllCaps="false"
+            android:textColor="#FFFFFF"
+            android:visibility="gone"
+            app:icon="@drawable/ic_baseline_arrow_upward_24"
+            app:iconTint="#FFFFFF"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
         <TextView
             android:id="@+id/emptyText"
             android:layout_width="wrap_content"
