@@ -1,7 +1,12 @@
 package ru.netology.nmedia.repository
 
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.map
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import retrofit2.Response
 import ru.netology.nmedia.api.PostsApi
 import ru.netology.nmedia.dao.PostDao
@@ -13,11 +18,30 @@ import ru.netology.nmedia.error.ApiError
 import ru.netology.nmedia.error.NetworkError
 import ru.netology.nmedia.error.UnknownError
 import java.io.IOException
+import kotlin.time.Duration.Companion.seconds
 
 
 class PostRepositoryImpl(private val dao: PostDao) : PostRepository {
 
-    override val data: LiveData<List<Post>> = dao.getAll().map { it.toDto() }
+    override val data = dao.getAll().map(List<PostEntity>::toDto)
+
+    override fun getNewerCount(newerId: Long): Flow<Int> = flow {
+        while (true) {
+            try {
+                delay(10.seconds)
+                val response = PostsApi.retrofitService.getNewer(newerId)
+
+                val posts = response.body() ?: throw ApiError(response.code(), response.message())
+                dao.insert(posts.toEntity())
+                emit(posts.size)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // do nothing
+            }
+        }
+    }
+        .flowOn(Dispatchers.Default)
 
     override suspend fun getAll() {
         try {
@@ -26,7 +50,7 @@ class PostRepositoryImpl(private val dao: PostDao) : PostRepository {
                 throw ApiError(response.code(), response.message())
             }
             val posts = response.body() ?: throw ApiError(response.code(), response.message())
-            dao.insert(posts.toEntity())
+            dao.insert(posts.onEach { it.isVisible = true }.toEntity())
         } catch (e: ApiError) {
             throw e
         } catch (_: IOException) {
@@ -103,6 +127,10 @@ class PostRepositoryImpl(private val dao: PostDao) : PostRepository {
             throw UnknownError
 
         }
+    }
+
+    override fun showNewPosts() {
+        dao.showNewPosts()
     }
 }
 

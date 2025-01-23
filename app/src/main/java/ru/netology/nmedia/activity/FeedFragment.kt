@@ -70,6 +70,19 @@ class FeedFragment : Fragment() {
                     .show()
             }
         }
+
+        viewModel.newerCount.observe(viewLifecycleOwner) { state ->
+            binding.newer.visibility = View.VISIBLE
+            println(state)
+        }
+
+        binding.newer.setOnClickListener {
+            viewModel.showNewPosts()
+            binding.newer.visibility = View.GONE
+            binding.list.smoothScrollToPosition(0)
+        }
+
+
         binding.swiperefresh.setOnRefreshListener {
             viewModel.loadPosts()
         }
@@ -81,4 +94,6 @@ class FeedFragment : Fragment() {
 
         return binding.root
     }
+
+
 }
